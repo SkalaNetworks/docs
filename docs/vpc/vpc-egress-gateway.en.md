@@ -1,8 +1,33 @@
 # VPC Egress Gateway
 
-VPC Egress Gateway is used to control the access of Pods within VPCs (including the default VPC) to the external network. VPC Egress Gateway refers to the design of VPC NAT Gateway, and implements load balancing based on ECMP routing and high availability based on BFD. It also supports IPv6 and dual-stack.
+**VPC Egress Gateway** is used to control external network access for Pods within a VPC (including the default VPC) with a group of static addresses and has the following features:
 
-> VPC Egress Gateway supports both the default VPC and custom VPCs.
+- Achieves Active-Active high availability through ECMP, enabling horizontal throughput scaling
+- Implements fast failover (<1s) via BFD
+- Supports IPv6 and dual-stack
+- Enables granular routing control through `NamespaceSelector` and `PodSelector`
+- Allows flexible scheduling of Egress Gateway through `NodeSelector`
+
+At the same time, VPC Egress Gateway has the following limitations:
+
+- Uses macvlan for underlying network connectivity, requiring [Underlay support](../start/underlay.en.md#environment-requirements) from the underlying network
+- In multi-instance Gateway mode, multiple Egress IPs are required
+- Currently, only supports SNAT; EIP and DNAT are not supported
+- Currently, recording source address translation relationships is not supported
+
+## Implementation Details
+
+Each Egress Gateway consists of multiple Pods with multiple network interfaces. Each Pod has two network interfaces: one joins the virtual network for communication within the VPC, and the other connects to the underlying physical network via Macvlan for external network communication. Virtual network traffic ultimately accesses the external network through NAT within the Egress Gateway instances.
+
+![](../static/vpc-eg-1.png)
+
+Each Egress Gateway instance registers its address in the OVN routing table. When a Pod within the VPC needs to access the external network, OVN uses source address hashing to forward traffic to multiple Egress Gateway instance addresses, achieving load balancing. As the number of Egress Gateway instances increases, throughput can also scale horizontally.
+
+![](../static/vpc-eg-2.png)
+
+OVN uses the BFD protocol to probe multiple Egress Gateway instances. When an Egress Gateway instance fails, OVN marks the corresponding route as unavailable, enabling rapid failure detection and recovery.
+
+![](../static/vpc-eg-3.png)
 
 ## Requirements
 
@@ -325,7 +350,7 @@ Session 1
 
 #### VPC Egress Gateway
 
-Spec：
+Spec:
 
 | Fields | Type | Optional | Default Value | Description | Example |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -338,8 +363,10 @@ Spec：
 | `internalIPs` | `string array` | Yes | - | IP addresses used for accessing the VPC network. IPv4, IPv6 and dual-stack are supported. The number of IPs specified must NOT be less than `replicas`. It is recommended to set the number to `<replicas> + 1` to avoid extreme cases where the Pod is not created properly. | `10.16.0.101` / `fd00::11` / `10.16.0.101,fd00::11` |
 | `externalIPs` | `string array` | Yes | - | IP addresses used for accessing the external network. IPv4, IPv6 and dual-stack are supported. The number of IPs specified must NOT be less than `replicas`. It is recommended to set the number to `<replicas> + 1` to avoid extreme cases where the Pod is not created properly. | `10.16.0.101` / `fd00::11` / `10.16.0.101,fd00::11` |
 | `bfd` | `object` | Yes | - | BFD Configuration.| - |
-| `policies` | `object array` | Yes | - | Egress policies. At least one policy must be configured. | - |
+| `policies` | `object array` | Yes | - | Egress policies. Configurable when `selectors` is configured. | - |
+| `selectors` | `object array` | Yes | - | Configure Egress policies by namespace selectors and Pod selectors. SNAT/MASQUERADE will be applied to the matched Pods. Configurable when `policies` is configured. | - |
 | `nodeSelector` | `object array` | Yes | - | Node selector applied to the workload. The workload (Deployment/Pod) will run on the selected nodes. | - |
+| `trafficPolicy` | `string` | Yes | `Cluster` | Available values: `Cluster`/`Local`. **Effective only when BFD is enabled**. When set to `Local`, Egress traffic will be redirected to the VPC Egress Gateway instance running on the same node if available. If the instance is down, Egress traffic will be redirected to other instances. | `Local` |
 
 BFD Configuration:
 
@@ -358,6 +385,17 @@ Egress Policies:
 | `ipBlocks` | `string array` | Yes | - | IP range segments applied to this Gateway. Both IPv4 and IPv6 are supported. | `192.168.0.1` / `192.168.0.0/24` |
 | `subnets` | `string array` | Yes | - | The VPC subnet name applied to this Gateway. IPv4, IPv6 and dual-stack subnets are supported. | `subnet1` |
 
+Selectors:
+
+| Fields | Type | Optional | Default Value | Description | Example |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `namespaceSelector` | `object` | Yes | - | Namespace selector. An empty label selector matches all namespaces. | - |
+| `namespaceSelector.matchLabels` | `dict/map` | Yes | - | A map of {key,value} pairs. | - |
+| `namespaceSelector.matchExpressions` | `object array` | Yes | - | A list of label selector requirements. The requirements are ANDed. | - |
+| `podSelector` | `object` | Yes | - | Pod selector. An empty label selector matches all Pods. | - |
+| `podSelector.matchLabels` | `dict/map` | Yes | - | A map of {key,value} pairs. | - |
+| `podSelector.matchExpressions` | `object array` | Yes | - | A list of label selector requirements. The requirements are ANDed. | - |
+
 Node selector:
 
 | Fields | Type | Optional | Default Value | Description | Example |
@@ -366,7 +404,7 @@ Node selector:
 | `matchExpressions` | `object array` | Yes | - | A list of label selector requirements. The requirements are ANDed. | - |
 | `matchFields` | `object array` | Yes | - | A list of field selector requirements. The requirements are ANDed. | - |
 
-Status：
+Status:
 
 | Fields | Type | Description | Example |
 | :--- | :--- | :--- | :--- |

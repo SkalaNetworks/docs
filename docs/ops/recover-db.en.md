@@ -26,7 +26,7 @@ file system failure or lack of disk space, but the cluster is still working norm
 ### Check the Logs to Confirm Status
 
 Check the log in `/var/log/ovn/ovn-northd.log`, if it shows similar error as follows,
-you can make sue that there is an exception in the database:
+you can make sure that there is an exception in the database:
 
 ```bash
  * ovn-northd is not running
@@ -78,7 +78,7 @@ Log in to the abnormal node and delete the database file:
 mv /etc/origin/ovn/ovnnb_db.db /tmp
 ```
 
-Delete the `ovn-central` pod of the corresponding node and wait for the cluster to recover：
+Delete the `ovn-central` pod of the corresponding node and wait for the cluster to recover:
 
 ```bash
 kubectl delete pod -n kube-system ovn-central-xxxx
@@ -129,14 +129,14 @@ mv /etc/origin/ovn/ovnsb_db.db /tmp
 ### Recovering Database Cluster
 
 Rename the backup databases to `ovnnb_db.db` and `ovnsb_db.db` respectively,
-and copy them to the `/etc/origin/ovn/` directory of the first machine in the `ovn-central` environment variable `NODE_IPS`：
+and copy them to the `/etc/origin/ovn/` directory of the first machine in the `ovn-central` environment variable `NODE_IPS`:
 
 ```bash
 mv /etc/origin/ovn/ovnnb_db_standalone.db /etc/origin/ovn/ovnnb_db.db
 mv /etc/origin/ovn/ovnsb_db_standalone.db /etc/origin/ovn/ovnsb_db.db
 ```
 
-Restore the number of replicas of `ovn-central`：
+Restore the number of replicas of `ovn-central`:
 
 ```bash
 kubectl scale deployment -n kube-system ovn-central --replicas=3

@@ -1,13 +1,11 @@
 # One-Click Installation
 
-Kube-OVN provides a one-click installation script to help you quickly install a highly available,
+Kube-OVN provides a one-click installation script and charts repo to help you quickly install a highly available,
 production-ready Kube-OVN container network with Overlay networking by default.
 
-Helm Chart installation is supported since Kube-OVN v1.12.0, and the default deployment is Overlay networking.
+If you need Underlay/Vlan networking as the default container network, please read [Underlay Installation](./underlay.en.md)
 
-If you need Underlay/Vlan networking as the default container network，please read [Underlay Installation](./underlay.en.md)
-
-Before installation please read [Prerequisites](./prepare.en.md) first to make sure the environment is ready.
+Before installation please read [Prerequisites](./prepare.en.md) first to make sure the environment is ready. If you want to completely remove Kube-OVN, please refer to [Uninstallation](./uninstall.en.md).
 
 ## Script Installation
 
@@ -16,7 +14,7 @@ Before installation please read [Prerequisites](./prepare.en.md) first to make s
 We recommend using the stable release version for production environments, please use the following command to download:
 
 ```bash
-wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/dist/images/install.sh
+wget https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/tags/{{ variables.version }}/dist/images/install.sh
 ```
 
 If you are interested in the latest features of the master branch, please use the following command to download:
@@ -37,10 +35,10 @@ SVC_CIDR="10.96.0.0/12"                # Be consistent with apiserver's service-
 JOIN_CIDR="100.64.0.0/16"              # Pod/Host communication Subnet CIDR, don't overlay with SVC/NODE/POD CIDR
 LABEL="node-role.kubernetes.io/master" # The node label to deploy OVN DB
 IFACE=""                               # The name of the host NIC used by the container network, or if empty use the NIC that host Node IP in Kubernetes
-TUNNEL_TYPE="geneve"                   # Tunnel protocol，available options: geneve, vxlan or stt. stt requires compilation of ovs kernel module
+TUNNEL_TYPE="geneve"                   # Tunnel protocol, available options: geneve, vxlan or stt. stt requires compilation of ovs kernel module
 ```
 
-You can also use regular expression to math NIC names，such as `IFACE=enp6s0f0,eth.*`.
+You can also use regular expression to match NIC names, such as `IFACE=enp6s0f0,eth.*`.
 
 ### Run the Script
 
@@ -50,6 +48,13 @@ You can also use regular expression to math NIC names，such as `IFACE=enp6s0f0,
 
 Wait Kube-OVN ready.
 
+### Upgrade
+
+When using this script to upgrade Kube-OVN, please pay attention to the following points:
+
+1. The script's `[Step 4/6]` restarts all container network Pods. During an upgrade, this step should be **skipped or commented out from the script** to avoid unintended restarts.
+2. **Important:** If any parameters were adjusted during Kube-OVN operation, these changes **must be updated in the script before upgrading**. Otherwise, previous parameter adjustments **will be reverted**.
+
 ## Helm Chart Installation
 
 Since the installation of Kube-OVN requires setting some parameters, to install Kube-OVN using Helm, you need to follow the steps below.
@@ -57,7 +62,7 @@ Since the installation of Kube-OVN requires setting some parameters, to install 
 ### View the node IP address
 
 ```bash
-$ kubectl get node -o wide
+# kubectl get node -o wide
 NAME                     STATUS     ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
 kube-ovn-control-plane   NotReady   control-plane   20h   v1.26.0   172.18.0.3    <none>        Ubuntu 22.04.1 LTS   5.10.104-linuxkit   containerd://1.6.9
 kube-ovn-worker          NotReady   <none>          20h   v1.26.0   172.18.0.2    <none>        Ubuntu 22.04.1 LTS   5.10.104-linuxkit   containerd://1.6.9
@@ -66,15 +71,15 @@ kube-ovn-worker          NotReady   <none>          20h   v1.26.0   172.18.0.2  
 ### Add label to node
 
 ```bash
-$ kubectl label node -lbeta.kubernetes.io/os=linux kubernetes.io/os=linux --overwrite
+# kubectl label node -lbeta.kubernetes.io/os=linux kubernetes.io/os=linux --overwrite
 node/kube-ovn-control-plane not labeled
 node/kube-ovn-worker not labeled
 
-$ kubectl label node -lnode-role.kubernetes.io/control-plane kube-ovn/role=master --overwrite
+# kubectl label node -lnode-role.kubernetes.io/control-plane kube-ovn/role=master --overwrite
 node/kube-ovn-control-plane labeled
 
 # The following labels are used for the installation of dpdk images and can be ignored in non-dpdk cases
-$ kubectl label node -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
+# kubectl label node -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
 node/kube-ovn-control-plane labeled
 node/kube-ovn-worker labeled
 ```
@@ -82,35 +87,41 @@ node/kube-ovn-worker labeled
 ### Add Helm Repo information
 
 ```bash
-$ helm repo add kubeovn https://kubeovn.github.io/kube-ovn/
+# helm repo add kubeovn https://kubeovn.github.io/kube-ovn/
 "kubeovn" has been added to your repositories
 
 $ helm repo list
 NAME            URL
 kubeovn         https://kubeovn.github.io/kube-ovn/
 
-$ helm search repo kubeovn
-NAME                CHART VERSION   APP VERSION DESCRIPTION
-kubeovn/kube-ovn    0.1.0           1.12.0      Helm chart for Kube-OVN
+# helm repo update kubeovn
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "kubeovn" chart repository
+Update Complete. ⎈Happy Helming!⎈
+
+# helm search repo kubeovn
+NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+kubeovn/kube-ovn        {{ variables.version }}        {{ variables.version }}         Helm chart for Kube-OVN
 ```
 
-### Run helm install to install Kube-OVN
+### Install Kube-OVN with Helm
 
-The Node0IP, Node1IP, and Node2IP parameters are the IP addresses of the cluster master nodes, respectively. For other parameters, you can refer to the variable definitions in the values.yaml file.
+You can refer to the variable definitions in the `values.yaml` file for available parameters.
 
 ```bash
-# Single master node environment install
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=${Node0IP}
-
-# Using the node information above as an example, execute the install command
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=172.18.0.3
+# helm install kube-ovn kubeovn/kube-ovn --wait -n kube-system --version {{ variables.version }}
 NAME: kube-ovn
-LAST DEPLOYED: Fri Mar 31 12:43:43 2023
-NAMESPACE: default
+LAST DEPLOYED: Thu Apr 24 08:30:13 2025
+NAMESPACE: kube-system
 STATUS: deployed
 REVISION: 1
 TEST SUITE: None
+```
 
-# Highly Available Cluster Installation
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=${Node0IP}\,${Node1IP}\,${Node2IP}
+### Upgrade
+
+**Important:** Similar to script-based upgrades, ensure all parameter adjustments are updated in the `values.yaml` file **before upgrading with Helm**. Otherwise, previous parameter adjustments **will be reverted**.
+
+```bash
+helm upgrade -f values.yaml kube-ovn kubeovn/kube-ovn --wait -n kube-system --version {{ variables.version }}
 ```

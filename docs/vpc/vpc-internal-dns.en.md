@@ -4,6 +4,10 @@ Due to the isolation of the user-defined VPC and the default VPC network, the co
 
 This CRD eventually deploys a coredns that has two NICs, one in the user-defined VPC and the other in the default VPC to enable network interoperability and provide an internal load balancing within the custom VPC through the [custom VPC internal load balancing](./vpc-internal-lb.en.md).
 
+!!! note
+
+    This DNS address **will not** be automatically injected into Pods or VMs. Users need to modify the content of `/etc/resolv.conf` through Webhook or VM image templates.
+
 ## Deployment of vpc-dns dependent resources
 
 ```yaml
@@ -119,18 +123,18 @@ data:
   nad-provider: ovn-nad.default.ovn
 ```
 
-* `enable-vpc-dns`：enable vpc dns feature, true as default
-* `coredns-image`：dns deployment image. Defaults to the clustered coredns deployment version
-* `coredns-vip`：The vip that provides lb services for coredns.
-* `coredns-template`：The URL where the coredns deployment template is located. defaults to the current version of the ovn directory. `coredns-template.yaml` default is `https://raw.githubusercontent.com/kubeovn/kube-ovn/<kube-ovn version>/yamls/coredns-template.yaml`.
-* `nad-name`：Configured network-attachment-definitions Resource name.
-* `nad-provider`：The name of the provider to use.
-* `k8s-service-host`：The ip used for coredns to access the k8s apiserver service, defaults to the apiserver address within the cluster.
-* `k8s-service-port`：The port used for coredns to access the k8s apiserver service, defaults to the apiserver port within the cluster.
+* `enable-vpc-dns`: enable vpc dns feature, true as default
+* `coredns-image`: dns deployment image. Defaults to the clustered coredns deployment version
+* `coredns-vip`: the vip that provides lb services for coredns.
+* `coredns-template`: the URL where the coredns deployment template is located. defaults to the current version of the ovn directory. `coredns-template.yaml` default is `https://raw.githubusercontent.com/kubeovn/kube-ovn/<kube-ovn version>/yamls/coredns-template.yaml`.
+* `nad-name`: configured network-attachment-definitions Resource name.
+* `nad-provider`: the name of the provider to use.
+* `k8s-service-host`: the ip used for coredns to access the k8s apiserver service, defaults to the apiserver address within the cluster.
+* `k8s-service-port`: the port used for coredns to access the k8s apiserver service, defaults to the apiserver port within the cluster.
 
 ## Deploying vpc-dns
 
-configure vpc-dns yaml：
+configure vpc-dns yaml:
 
 ```yaml
 kind: VpcDns
@@ -143,8 +147,8 @@ spec:
   replicas: 2
 ```
 
-* `vpc` ： The name of the vpc used to deploy the dns component.
-* `subnet`：Sub-name for deploying dns components.
+* `vpc`: the name of the vpc used to deploy the dns component.
+* `subnet`: subnet name for deploying dns components.
 * `replicas`: vpc dns deployment replicas
 
 View information about deployed resources:
@@ -165,7 +169,7 @@ Restrictions: only one custom dns component will be deployed under a VPC
 
 ## Validate deployment results
 
-To view vpc-dns Pod status, use label app=vpc-dns to view all vpc-dns pod status:
+To view vpc-dns Pod status, use label `app=vpc-dns` to view all vpc-dns Pod status:
 
 ```bash
 # kubectl -n kube-system get pods -l app=vpc-dns
@@ -188,4 +192,4 @@ Go to the Pod under this VPC and test the dns resolution:
 nslookup kubernetes.default.svc.cluster.local 10.96.0.3
 ```
 
-The subnet where the switch lb rule under this VPC is located and the pods under other subnets under the same VPC can be resolved.
+The subnet where the switch lb rule under this VPC is located and the Pods under other subnets under the same VPC can be resolved.

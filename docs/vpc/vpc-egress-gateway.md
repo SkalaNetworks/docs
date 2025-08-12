@@ -1,8 +1,33 @@
 # VPC Egress Gateway
 
-VPC Egress Gateway 用于控制 VPC（包括默认 VPC）内 Pod 访问外部网络。VPC Egress Gateway 参考了 VPC NAT Gateway 的设计，在 VPC NAT Gateway 的基础上实现了基于 ECMP 路由的负载均衡以及基于 BFD 的高可用，并支持 IPv6 以及双栈。
+VPC Egress Gateway 用于控制 VPC（包括默认 VPC）内 Pod 使用一组固定地址访问外部网络，并具有以下特点：
 
-> VPC Egress Gateway 支持默认 VPC 及自定义 VPC。
+- 通过 ECMP 实现 Active-Active 高可用，可实现吞吐量横向扩展
+- 通过 BFD 实现 <1s 的快速故障切换
+- 支持 IPv6 及双栈
+- 可通过 Namespace 选择器和 Pod 选择器实现细粒度路由控制
+- 可通过 Node 选择器，实现 Egress Gateway 灵活调度
+
+同时 VPC Egress Gateway 具有如下限制：
+
+- 使用 Macvlan 实现底层网络打通，需要底层网络[支持 Underlay](../start/underlay.md#_2)
+- Gateway 多实例模式下需要占用多个 Egress IP
+- 目前只支持 SNAT，不支持 EIP 和 DNAT
+- 目前不支持记录源地址转换关系
+
+## 实现原理
+
+每个 Egress Gateway 由多个多网卡的 Pod 组成，每个 Pod 两块网卡，一个网卡加入虚拟网络用于和 VPC 内地址通信，另一个网卡通过 Macvlan 接入底层物理网络，用于和外部网络通信。虚拟网络流量最终在 Egress Gateway 实例内通过 NAT 访问外部网络。
+
+![](../static/vpc-eg-1.png)
+
+每个 Egress Gateway 实例会将自己的地址注册到 OVN 路由表内，当 VPC 内 Pod 需要访问外部网络时，OVN 会使用源地址哈希将流量转发到多个 Egress Gateway 实例地址，从而实现负载均衡，随着 Egress Gateway 实例数量的增加，吞吐量也可以实现横向扩展。
+
+![](../static/vpc-eg-2.png)
+
+OVN 通过 BFD 协议对多个 Egress Gateway 实例进行探测，当某个 Egress Gateway 实例故障后，OVN 会将对应路由设置为不可用，从而实现故障的快速恢复。
+
+![](../static/vpc-eg-3.png)
 
 ## 使用要求
 
@@ -338,8 +363,10 @@ Spec：
 | `internalIPs` | `string array` | 是 | - | 接入 VPC 网络使用的 IP 地址，支持 IPv6 及双栈。指定的 IP 数量不得小于副本数。建议将数量设置为 `<replicas> + 1` 以避免某些极端情况下 Pod 无法正常创建的问题。 | `10.16.0.101` / `fd00::11` / `10.16.0.101,fd00::11` |
 | `externalIPs` | `string array` | 是 | - | 接入外部网络使用的 IP 地址，支持 IPv6 及双栈。指定的 IP 数量不得小于副本数。建议将数量设置为 `<replicas> + 1` 以避免某些极端情况下 Pod 无法正常创建的问题。 | `10.16.0.101` / `fd00::11` / `10.16.0.101,fd00::11` |
 | `bfd` | `object` | 是 | - | BFD 配置。| - |
-| `policies` | `object array` | 是 | - | Egress 策略。必须配置至少一条策略。| - |
+| `policies` | `object array` | 是 | - | Egress 策略。可与 `selectors` 同时配置。| - |
+| `selectors` | `object array` | 是 | - | 通过 Namespace Selector 以及 Pod Selector 配置 Egress 策略。匹配到的 Pod 将开启 SNAT/MASQUERADE。可与 `policies` 同时配置。| - |
 | `nodeSelector` | `object array` | 是 | - | 工作负载的节点选择器，工作负载（Deployment/Pod）将运行在被选择的节点上。| - |
+| `trafficPolicy` | `string` | 是 | `Cluster` | 可选值：`Cluster`/`Local`。**仅开启 BFD 时生效**。 设置为 `Local` 时，Egress 流量将优先导向同节点上的 VPC Egress Gateway 实例。若同节点上的 VPC Egress Gateway 实例出现故障，Egress 流量将导向其它实例。 | `Local` |
 
 BFD 配置：
 
@@ -357,6 +384,17 @@ Egress 策略：
 | `snat` | `boolean` | 是 | `false` | 是否开启 SNAT/MASQUERADE。 | `true` |
 | `ipBlocks` | `string array` | 是 | - | 应用于此 Gateway 的 IP 范围段。支持 IPv6。 | `192.168.0.1` / `192.168.0.0/24` |
 | `subnets` | `string array` | 是 | - | 应用于此 Gateway 的 VPC 子网名称。支持 IPv6 子网及双栈子网。 | `subnet1` |
+
+Selectors：
+
+| 字段 | 类型 | 可选 | 默认值 | 说明 | 示例 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `namespaceSelector` | `object` | 是 | - | Namespace 选择器。空值时将匹配所有 Namespace。 | - |
+| `namespaceSelector.matchLabels` | `dict/map` | 是 | - | 键值对形式的标签选择器。 | - |
+| `namespaceSelector.matchExpressions` | `object array` | 是 | - | 表达式形式的标签选择器。| - |
+| `podSelector` | `object` | 是 | - | Pod 选择器。空值时将匹配所有 Pod。 | - |
+| `podSelector.matchLabels` | `dict/map` | 是 | - | 键值对形式的标签选择器。| - |
+| `podSelector.matchExpressions` | `object array` | 是 | - | 表达式形式的标签选择器。| - |
 
 节点选择器：
 

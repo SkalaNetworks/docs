@@ -4,7 +4,10 @@ The OVS software based solution is CPU intensive, affecting system performance a
 
 Yunsilicon metaScale SmartNICs provide a drop-in accelerator for OVS which can support very high flow and policy capacities without degradation in performance. By taking use of SR-IOV technology we can achieve low network latency and high throughput.
 
-> Currently, Yunsilicon only supports the v1.11 series version of Kube-OVN, and some of the latest features cannot be used.
+!!! note  
+
+    1. The solution described in this article was verified in 2024. However, hardware NICs may now have new features, and some limitations mentioned may have been resolved. Please consult your hardware vendor for the latest technical constraints and capabilities.
+    2. Currently, Yunsilicon only supports the v1.11 series version of Kube-OVN, and some of the latest features cannot be used.
 
 ## Prerequisites
 
@@ -57,7 +60,7 @@ bash install.sh
 
 1. Find the device id of metaScale device, below is `b3:00.0`
 
-```shell
+```bash
 [root@k8s-master ~]# lspci -d 1f67:
 b3:00.0 Ethernet controller: Device 1f67:1111 (rev 02)
 b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)
@@ -65,27 +68,27 @@ b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)
 
 2. Find the related interface with device id, below is `p3p1`
 
-```shell
+```bash
 ls -l /sys/class/net/ | grep b3:00.0
 lrwxrwxrwx 1 root root 0 May  7 16:30 p3p1 -> ../../devices/pci0000:b2/0000:b2:00.0/0000:b3:00.0/net/p3p1
 ```
 
 3. Check available VF number
 
-```shell
+```bash
 cat /sys/class/net/p3p1/device/sriov_totalvfs
 512
 ```
 
 4. Create VFs
 
-```shell
+```bash
 echo '10' > /sys/class/net/p3p1/device/sriov_numvfs
 ```
 
 5. Find the device ids of VFs created above
 
-```shell
+```bash
 lspci -d 1f67:
 b3:00.0 Ethernet controller: Device 1f67:1111 (rev 02)
 b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)

@@ -6,6 +6,10 @@ eSwitch 上执行。该技术可以在无需对 OVS 控制平面进行修改的�
 
 ![](../static/hw-offload.png)
 
+!!! note
+
+    本文所述方案在 2022 年经过验证，但目前硬件网卡可能已经有了新的特性，当时的一些限制也可能已经被解决。请咨询您的硬件供应商，了解最新的技术限制和能力。
+
 ## 前置条件
 
 - Mellanox CX5/CX6/CX7/BlueField 等支持 ASAP² 的硬件网卡。
@@ -42,7 +46,7 @@ lrwxrwxrwx 1 root root 0 Feb 4 16:16 enp132s0f1np1 -> ../../devices/pci0000:80/0
 
 > 本示例中网卡 enp132s0f0np0 和 enp132s0f1np1 绑定 bond1
 
-```shell
+```bash
 # ip link show enp132s0f0np0 | grep bond
 160: enp132s0f0np0: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond1 state UP mode DEFAULT group default qlen 1000
 # ip link show enp132s0f1np1 | grep bond
@@ -51,7 +55,7 @@ lrwxrwxrwx 1 root root 0 Feb 4 16:16 enp132s0f1np1 -> ../../devices/pci0000:80/0
 
 移除 bond 和现有的 VF：
 
-```shell
+```bash
 ifenslave -d bond1 enp132s0f0np0
 ifenslave -d bond1 enp132s0f1np1
 echo 0 > /sys/class/net/enp132s0f0np0/device/sriov_numvfs
@@ -160,7 +164,7 @@ SR-IOV VF LAG 允许网卡的 PF 获取 OVS 试图卸载到绑定网络设备的
 
 本示例中将采用 LACP 的模式，配置方式如下：
 
-```shell
+```bash
 modprobe bonding mode=802.3ad
 ip link set enp132s0f0np0 master bond1
 ip link set enp132s0f1np1 master bond1

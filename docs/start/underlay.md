@@ -86,15 +86,24 @@ spec:
     - interface: eth2
       nodes:
         - node1
-  excludeNodes:
-    - node2
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/arch: amd64
+      network-type: underlay
+    matchExpressions:
+      - key: kubernetes.io/hostname
+        operator: In
+        values:
+          - node1
+          - node2
 ```
 
 **注意：ProviderNetwork 资源名称的长度不得超过 12。**
 
 - `defaultInterface`: 为默认使用的节点网卡名称。 ProviderNetwork 创建成功后，各节点（除 excludeNodes 外）中会创建名为 br-net1（格式为 `br-NAME`）的 OVS 网桥，并将指定的节点网卡桥接至此网桥。
 - `customInterfaces`: 为可选项，可针对特定节点指定需要使用的网卡。
-- `excludeNodes`: 可选项，用于指定不桥接网卡的节点。该列表中的节点会被添加 `net1.provider-network.ovn.kubernetes.io/exclude=true` 标签。
+- `nodeSelector`: 可选项，用于基于节点标签选择需要创建 OVS 网桥的节点。支持 `matchLabels` 和 `matchExpressions` 两种选择方式。
+- `excludeNodes`: 可选项，用于指定不桥接网卡的节点。该列表中的节点会被添加 `net1.provider-network.ovn.kubernetes.io/exclude=true` 标签。**注意：一旦使用了 `nodeSelector`，`excludeNodes` 将不再生效，推荐只使用 `nodeSelector`。**
 
 其它节点会被添加如下标签：
 
@@ -139,9 +148,11 @@ spec:
   cidrBlock: 172.17.0.0/16
   gateway: 172.17.0.1
   vlan: vlan1
+  disableGatewayCheck: false
 ```
 
-将 `vlan` 的值指定为需要使用的 VLAN 名称即可。多个 Subnet 可以引用同一个 VLAN。
+- `vlan`：需要使用的 VLAN 名称，多个 Subnet 可以引用同一个 VLAN。
+- `disableGatewayCheck`：若所在 Underlay 网络网关不存在，可将该字段设置为 `true`，关闭网关探测。
 
 ## 容器创建
 

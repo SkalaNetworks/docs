@@ -1,12 +1,10 @@
 # 一键安装
 
-Kube-OVN 提供了一键安装脚本，可以帮助你快速安装一个高可用，生产就绪的 Kube-OVN 容器网络，默认部署为 Overlay 类型网络。
-
-从 Kube-OVN v1.12.0 版本开始，支持 Helm Chart 安装，默认部署为 Overlay 类型网络。
+Kube-OVN 提供了一键安装脚本和 Charts 仓库，可以帮助你快速安装一个高可用，生产就绪的 Kube-OVN 容器网络，默认部署为 Overlay 类型网络。
 
 如果默认网络需要搭建 Underlay/Vlan 网络，请参考 [Underlay 网络支持](./underlay.md)。
 
-安装前请参考[准备工作](./prepare.md)确认环境配置正确。
+安装前请参考[准备工作](./prepare.md)确认环境配置正确。如果想完全删除 Kube-OVN 请参考[卸载](./uninstall.md)。
 
 ## 脚本安装
 
@@ -15,7 +13,7 @@ Kube-OVN 提供了一键安装脚本，可以帮助你快速安装一个高可�
 我们推荐在生产环境使用稳定的 release 版本，请使用下面的命令下载稳定版本安装脚本：
 
 ```bash
-wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/dist/images/install.sh
+wget https://raw.githubusercontent.com/kubeovn/kube-ovn/refs/tags/{{ variables.version }}/dist/images/install.sh
 ```
 
 如果对 master 分支的最新功能感兴趣，想使用下面的命令下载开发版本部署脚本：
@@ -49,6 +47,13 @@ TUNNEL_TYPE="geneve"                   # 隧道封装协议，可选 geneve, vxl
 
 等待安装完成。
 
+### 升级
+
+当使用该脚本进行 Kube-OVN 升级时需要注意以下几点：
+
+1. 脚本中的 `[Step 4/6]` 会重启所有容器网络 Pod。在升级过程中，应**跳过此步骤或在脚本中将其注释掉**，以避免不必要的重启。
+2. **重要提示：** 如果在 Kube-OVN 运行过程中对参数进行过调整，**务必在升级前将这些变更更新到脚本中**。否则，之前的参数调整将**被还原**。
+
 ## Helm Chart 安装
 
 由于 Kube-OVN 的安装，需要设置一些参数，因此使用 Helm 安装 Kube-OVN，需要按照以下步骤执行。
@@ -56,7 +61,7 @@ TUNNEL_TYPE="geneve"                   # 隧道封装协议，可选 geneve, vxl
 ### 查看节点 IP 地址
 
 ```bash
-$ kubectl get node -o wide
+# kubectl get node -o wide
 NAME                     STATUS     ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
 kube-ovn-control-plane   NotReady   control-plane   20h   v1.26.0   172.18.0.3    <none>        Ubuntu 22.04.1 LTS   5.10.104-linuxkit   containerd://1.6.9
 kube-ovn-worker          NotReady   <none>          20h   v1.26.0   172.18.0.2    <none>        Ubuntu 22.04.1 LTS   5.10.104-linuxkit   containerd://1.6.9
@@ -65,15 +70,15 @@ kube-ovn-worker          NotReady   <none>          20h   v1.26.0   172.18.0.2  
 ### 给节点添加 label
 
 ```bash
-$ kubectl label node -lbeta.kubernetes.io/os=linux kubernetes.io/os=linux --overwrite
+# kubectl label node -lbeta.kubernetes.io/os=linux kubernetes.io/os=linux --overwrite
 node/kube-ovn-control-plane not labeled
 node/kube-ovn-worker not labeled
 
-$ kubectl label node -lnode-role.kubernetes.io/control-plane kube-ovn/role=master --overwrite
+# kubectl label node -lnode-role.kubernetes.io/control-plane kube-ovn/role=master --overwrite
 node/kube-ovn-control-plane labeled
 
 # 以下 label 用于 dpdk 镜像的安装，非 dpdk 情况，可以忽略
-$ kubectl label node -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
+# kubectl label node -lovn.kubernetes.io/ovs_dp_type!=userspace ovn.kubernetes.io/ovs_dp_type=kernel --overwrite
 node/kube-ovn-control-plane labeled
 node/kube-ovn-worker labeled
 ```
@@ -81,35 +86,41 @@ node/kube-ovn-worker labeled
 ### 添加 Helm Repo 信息
 
 ```bash
-$ helm repo add kubeovn https://kubeovn.github.io/kube-ovn/
+# helm repo add kubeovn https://kubeovn.github.io/kube-ovn/
 "kubeovn" has been added to your repositories
 
-$ helm repo list
+# helm repo list
 NAME            URL
 kubeovn         https://kubeovn.github.io/kube-ovn/
 
-$ helm search repo kubeovn
-NAME                CHART VERSION   APP VERSION DESCRIPTION
-kubeovn/kube-ovn    0.1.0           1.12.0      Helm chart for Kube-OVN
+# helm repo update kubeovn
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "kubeovn" chart repository
+Update Complete. ⎈Happy Helming!⎈
+
+# helm search repo kubeovn
+NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+kubeovn/kube-ovn        {{ variables.version }}        {{ variables.version }}         Helm chart for Kube-OVN
 ```
 
 ### 执行 helm install 安装 Kube-OVN
 
-Node0IP、Node1IP、Node2IP 参数分别为集群 master 节点的 IP 地址。其他参数的设置，可以参考 values.yaml 文件中变量定义。
+Chart 参数的设置，可以参考 `values.yaml` 文件中变量定义。
 
 ```bash
-# 单 master 节点环境安装
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=${Node0IP}
-
-# 以上边的 node 信息为例，执行安装命令
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=172.18.0.3
+# helm install kube-ovn kubeovn/kube-ovn --wait -n kube-system --version {{ variables.version }}
 NAME: kube-ovn
-LAST DEPLOYED: Fri Mar 31 12:43:43 2023
-NAMESPACE: default
+LAST DEPLOYED: Thu Apr 24 08:30:13 2025
+NAMESPACE: kube-system
 STATUS: deployed
 REVISION: 1
 TEST SUITE: None
+```
 
-# 高可用集群安装
-$ helm install kube-ovn kubeovn/kube-ovn --set MASTER_NODES=${Node0IP}\,${Node1IP}\,${Node2IP}
+### 升级
+
+**重要提示：** 与脚本升级类似，请确保在**使用 Helm 升级前**，所有参数调整都已更新到相应的 `values.yaml` 文件中。否则，之前的参数调整将**被还原**。
+
+```bash
+helm upgrade -f values.yaml kube-ovn kubeovn/kube-ovn --wait -n kube-system --version {{ variables.version }}
 ```

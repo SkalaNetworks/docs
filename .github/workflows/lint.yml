@@ -5,15 +5,25 @@ on:
 jobs:
   markdown-lint:
     name: lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
       - name: lint
         run: |
           npm install -g markdownlint-cli
           npm install -g markdownlint-rule-search-replace@1.0.9 
           pwd
-          markdownlint "**/*.md" --disable MD013 MD033 MD045 MD024 MD041 MD029 MD051 -r markdownlint-rule-search-replace
-          markdownlint -V  
+          markdownlint "**/*.md" --disable MD013 MD033 MD045 MD024 MD041 MD029 MD051 MD046 -r markdownlint-rule-search-replace
+          markdownlint -V
+          python3 scripts/check-chinese-punctuation.py
+          
+      - run: pip install -r docs/requirements.txt
+      - name: build
+        run: |
+          mkdocs build -s

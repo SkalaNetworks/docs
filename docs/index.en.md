@@ -6,7 +6,7 @@
 
 Kube-OVN is an enterprise-level cloud-native network orchestration system under CNCF that combines the capabilities of SDN with cloud-native technologies, providing the most functions, extreme performance and the easiest operation.
 
-Kube-OVN uses Open Virtual Network (OVN) and OpenVswitch at the underlying layer to implement network orchestration and exposes its rich capabilities to Kubernetes networking. OVN and OVS have a long history, having emerged long before Kubernetes was born, and have become the de facto standard in the SDN field. Kube-OVN brings them into Kubernetes, significantly enhancing Kubernetes' networking capabilities.
+Kube-OVN uses Open Virtual Network (OVN) and Open vSwitch at the underlying layer to implement network orchestration and exposes its rich capabilities to Kubernetes networking. OVN and OVS have a long history, having emerged long before Kubernetes was born, and have become the de facto standard in the SDN field. Kube-OVN brings them into Kubernetes, significantly enhancing Kubernetes' networking capabilities.
 
 ## Why Kube-OVN?
 
@@ -25,7 +25,7 @@ It currently supports [Subnet Management](guide/subnet.en.md), [Static IP Alloca
 [Distributed/Centralized Gateways](guide/subnet.en.md#overlay-subnet-gateway-settings), [Underlay/Overlay Hybrid Networks](start/underlay.en.md),
 [VPC Multi-Tenant Networks](vpc/vpc.en.md), [Cross-Cluster Interconnect](advance/with-ovn-ic.en.md), [QoS Management](guide/qos.en.md),
 [Multi-NIC Management](advance/multi-nic.en.md), [ACL](guide/subnet.en.md#subnet-acl), [Traffic Mirroring](guide/mirror.en.md),
-ARM Support, [Windows Support](advance/windows.en.md), and many more.
+ARM Support, and many more.
 
 **Extreme Performance:**
 
@@ -53,3 +53,65 @@ Also built-in rich [monitoring metrics](reference/metrics.en.md) and [Grafana da
 Powerful [command line tools](ops/kubectl-ko.en.md) simplify daily operations and maintenance for users.
 By combining [with Cilium](advance/with-cilium.en.md), users can enhance the observability of their networks with eBPF capabilities.
 In addition, the ability to [mirror traffic](guide/mirror.en.md) makes it easy to customize traffic monitoring and interface with traditional NPM systems.
+
+## CNI Selection Recommendations
+
+The Kubernetes community offers many excellent CNI projects, which can make selection difficult for users. We recommend first identifying your actual requirements, then evaluating how different projects address those needs - rather than comparing all products first and then deciding which one fits. This approach makes sense for two reasons:
+
+1. Project maintainers primarily focus on their own projects and solving their community's problems - not tracking what other projects are doing or understanding their implementation details. Therefore, maintainers can't provide accurate comparison charts, and it's even harder for outsiders to do this.
+2. For end users, understanding your internal needs is far more important than understanding the differences between external projects.
+
+Creating a comparison chart under the Kube-OVN project that recommends Kube-OVN would inevitably be subjective and potentially inaccurate. Instead, we'll list scenarios where you **SHOULD NOT** choose Kube-OVN and provide our recommendations.
+
+### When You Need an eBPF Solution
+
+Choose [Cilium](https://cilium.io/) or Calico eBPF.
+
+Kube-OVN uses Open vSwitch as its data plane, which is a relatively older network virtualization technology.
+
+### When You Need an All-in-One Solution (CNI, Ingress, Service Mesh, and Observability)
+
+Choose [Cilium](https://cilium.io/).
+
+Kube-OVN primarily focuses on CNI-level networking capabilities, requiring you to combine it with other ecosystem projects for these additional features.
+
+### When Running on OpenShift
+
+Choose [ovn-kubernetes](https://ovn-kubernetes.io/).
+
+Using third-party CNIs on OpenShift requires adapting to the [Cluster Network Operator](https://github.com/openshift/cluster-network-operator) specifications, which Kube-OVN currently doesn't plan to support. Additionally, third-party network plugins won't receive official Red Hat support, and since networking is critical in Kubernetes, you'd need to coordinate between multiple vendors for solution design and troubleshooting.
+
+### When Using Public Cloud Kubernetes (EKS/AKS/GKE, etc.)
+
+Choose the default CNI provided by your Kubernetes vendor, for the same reasons as above.
+
+### When Running AI Training and Inference Workloads
+
+Use Hostnetwork or [host-device](https://www.cni.dev/plugins/current/main/host-device/) to assign physical devices directly to containers.
+
+AI workloads demand extremely low network latency, making any additional container network operations unnecessary.
+
+## Concepts Clarification: OVN/ovn-kubernetes/Kube-OVN
+
+Due to the similarity of these terms and some abbreviations, confusion often arises in communication. Here's a brief clarification:
+
+### OVN
+
+[OVN](https://www.ovn.org/en/) is a virtual network controller maintained by the Open vSwitch community, providing foundational abstractions for virtual networking. It is platform-agnostic and can offer networking services to multiple CMS (Cloud Management Systems) such as OpenStack and Kubernetes. Both *ovn-kubernetes* and *Kube-OVN* rely on OVN's networking capabilities to provide network functionality for Kubernetes.
+
+### ovn-kubernetes
+
+[ovn-kubernetes](https://ovn-kubernetes.io/) was initially a project launched by OVN maintainers to provide CNI networking capabilities for Kubernetes using OVN. It is now the default network for OpenShift and is widely used in OpenShift environments. It offers advanced features such as:
+
+- [UDN (User-Defined Networks)](https://ovn-kubernetes.io/okeps/okep-5193-user-defined-networks/)
+- [Multihoming](https://ovn-kubernetes.io/features/multiple-networks/multi-homing/)
+- [Hardware Acceleration](https://ovn-kubernetes.io/features/hardware-offload/ovs-doca/)
+
+### Kube-OVN
+
+Kube-OVN was originally developed to address issues like static IP allocation, namespace-based address space assignment, and centralized gateways by building on OVN. In its early stages, it heavily borrowed design principles and architecture from *ovn-kubernetes*, such as:
+
+- Using annotations to pass Pod network information.
+- Leveraging *join* networks to bridge container and host networks.
+
+With community contributions, it has evolved to support advanced features like Underlay networking, VPC, and KubeVirt integration.

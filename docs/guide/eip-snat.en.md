@@ -1,7 +1,17 @@
 # EIP and SNAT
 
-> This configuration is for the network under default VPC,
-> for custom VPC please refer to [VPC Gateway](../vpc/vpc.en.md#create-vpc-nat-gateway)
+> This configuration is for the network under the default VPC. User-defined VPCS support two types of NAT. Please refer to:
+
+- [VPC Iptables NAT Gateway](../vpc/vpc.md)
+- [VPC OVN NAT Gateway](../vpc/ovn-eip-fip-snat.md)
+
+> Any VPC supports the use of any one or more external subnets, but some factors need to be considered:
+
+- If the user only needs to use the OVN NAT function for subnets under the default VPC and uses it through the pod annotation method, please refer to the current documentation.
+
+- If the subnets under any VPC of the user need to use the OVN NAT function, or wish to maintain one or more external networks through provider network, vlan, subnet CRD, as well as through OVN-EIP, OVN-DNAT, OVN-FIP, For maintaining EIP and NAT, please refer to ovn-snat CRD [VPC OVN NAT Gateway](../vpc/ovn-eip-fip-snat.md).
+
+- If the subnets under any VPC of the user need to use the Iptables NAT function, please refer to [VPC Iptables NAT Gateway](../vpc/vpc.md).
 
 Kube-OVN supports SNAT and EIP functionality at the Pod level using the L3 Gateway feature in OVN.
 By using SNAT, a group of Pods can share an IP address for external access. With the EIP feature, a Pod can be directly associated with an external IP.
@@ -36,7 +46,7 @@ data:
 ```
 
 - `enable-external-gw`: Whether to enable SNAT and EIP functions.
-- `type`: `centralized` or `distributed`， Default is `centralized` If `distributed` is used, all nodes of the cluster need to have the same name NIC to perform the gateway function.
+- `type`: `centralized` or `distributed`, Default is `centralized` If `distributed` is used, all nodes of the cluster need to have the same name NIC to perform the gateway function.
 - `external-gw-nodes`: In `centralized`mode, The names of the node performing the gateway role, comma separated..
 - `external-gw-nic`: The name of the NIC that performs the role of a gateway on the node.
 - `external-gw-addr`: The IP and mask of the physical network gateway.
@@ -122,6 +132,6 @@ When the EIP or SNAT takes into effect, the `ovn.kubernetes.io/routed` annotatio
 
 Some args of `kube-ovn-controller` allow for advanced configuration of SNAT and EIP:
 
-- `--external-gateway-config-ns`: The Namespace of Configmap `ovn-external-gw-config`, default is `kube-system`。
+- `--external-gateway-config-ns`: The Namespace of Configmap `ovn-external-gw-config`, default is `kube-system`.
 - `--external-gateway-net`: The name of the bridge to which the physical NIC is bridged, default is `external`.
 - `--external-gateway-vlanid`: Physical network Vlan Tag number, default is 0, i.e. no Vlan is used.

@@ -13,7 +13,7 @@ Here's an illustration of the network interfaces attached to a pod, as provision
 
 ![multu-cni-multi-nic](../static/multus-pod-image.svg)
 
-IPAM：
+IPAM:
 
 By using [Multus CNI](https://github.com/k8snetworkplumbingwg/multus-cni), we can add multiple NICs of different networks to a Pod.
 However, we still lack the ability to manage the IP addresses of different networks within a cluster.
@@ -34,6 +34,19 @@ then manage the address from it, and write the address information assigned to t
 
 The CNI on the container machine can configure `kube-ovn-cni` as the ipam plugin.
 `kube-ovn-cni` will read the Pod annotation and return the address information to the corresponding CNI plugin using the standard format of the CNI protocol.
+
+## Compatibility Issues
+
+`NetworkAttachmentDefinition` supports an empty `spec`, where Multus will automatically search for the CNI configuration file with the same name in the `defaultConfDir` on each Node, as shown below:
+
+```yaml
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: macvlan-conf-2
+```
+
+However, `kube-ovn-controller` needs to centrally retrieve the `provider` information from each `NetworkAttachmentDefinition` and cannot fetch the corresponding configurations from each node individually. As a result, the usage of an empty `spec` is incompatible with Kube-OVN's IPAM capability.
 
 ## Usage
 
@@ -75,7 +88,7 @@ spec:
 - `spec.config.ipam.type`: Need to be set to `kube-ovn` to call the kube-ovn plugin to get the address information.
 - `server_socket`: The socket file used for communication to Kube-OVN. The default location is `/run/openvswitch/kube-ovn-daemon.sock`.
 - `provider`: The current NetworkAttachmentDefinition's `<name>. <namespace>` , Kube-OVN will use this information to find the corresponding Subnet resource.
-- `master`: the host’s physical network card
+- `master`: the host's physical network card
 
 #### Create a Kube-OVN Subnet
 
@@ -101,7 +114,7 @@ spec:
 ##### Create a Pod with Multiple NIC
 
 For Pods with randomly assigned addresses,
-simply add the following annotation `k8s.v1.cni.cncf.io/networks`, taking the value `<namespace>/<name>` of the corresponding NetworkAttachmentDefinition.：
+simply add the following annotation `k8s.v1.cni.cncf.io/networks`, taking the value `<namespace>/<name>` of the corresponding NetworkAttachmentDefinition:
 
 ```yaml
 apiVersion: v1
@@ -120,7 +133,7 @@ spec:
 
 ##### Create Pod with a Fixed IP
 
-For Pods with fixed IPs, add `<networkAttachmentName>.<networkAttachmentNamespace>.kubernetes.io/ip_address` annotation：
+For Pods with fixed IPs, add `<networkAttachmentName>.<networkAttachmentNamespace>.kubernetes.io/ip_address` annotation:
 
 ```yaml
 apiVersion: v1
@@ -306,7 +319,7 @@ spec:
 ##### Create a Pod with Multiple NIC
 
 For Pods with randomly assigned addresses,
-simply add the following annotation `k8s.v1.cni.cncf.io/networks`, taking the value `<namespace>/<name>` of the corresponding NetworkAttachmentDefinition.：
+simply add the following annotation `k8s.v1.cni.cncf.io/networks`, taking the value `<namespace>/<name>` of the corresponding NetworkAttachmentDefinition.:
 
 ```yaml
 apiVersion: v1

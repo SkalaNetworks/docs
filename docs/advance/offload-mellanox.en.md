@@ -8,6 +8,10 @@ which dramatically reduce latency and significantly increase the throughput.
 
 ![](../static/hw-offload.png)
 
+!!! note
+
+    The solution described in this article was verified in 2022. However, hardware NICs may now have new features, and some limitations mentioned may have been resolved. Please consult your hardware vendor for the latest technical constraints and capabilities.
+
 ## Prerequisites
 
 - Mellanox CX5/CX6/BlueField that support ASAP².
@@ -44,7 +48,7 @@ Check whether the network card is bound to bond:
 
 > In this example, the network cards enp132s0f0np0 and enp132s0f1np1 are bound to bond1
 
-```shell
+```bash
 # ip link show enp132s0f0np0 | grep bond
 160: enp132s0f0np0: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc mq master bond1 state UP mode DEFAULT group default qlen 1000
 # ip link show enp132s0f1np1 | grep bond
@@ -53,7 +57,7 @@ Check whether the network card is bound to bond:
 
 Remove bond and existing VF:
 
-```shell
+```bash
 ifenslave -d bond1 enp132s0f0np0
 ifenslave -d bond1 enp132s0f1np1
 echo 0 > /sys/class/net/enp132s0f0np0/device/sriov_numvfs
@@ -80,7 +84,7 @@ devlink dev param set pci/84:00.0 name flow_steering_mode value smfs cmode runti
 devlink dev param set pci/84:00.1 name flow_steering_mode value smfs cmode runtime
 ```
 
-> Note: If you don’t know which mode to choose, you can use the default mode without configuration.
+> Note: If you don't know which mode to choose, you can use the default mode without configuration.
 
 Check the number of available VFs:
 
@@ -162,7 +166,7 @@ SR-IOV VF LAG allows the NIC's physical functions (PFs) to get the rules that th
 
 In this example, LACP mode will be used, and the configuration is as follows:
 
-```shell
+```bash
 modprobe bonding mode=802.3ad
 ip link set enp132s0f0np0 master bond1
 ip link set enp132s0f1np1 master bond1
@@ -230,7 +234,7 @@ This plugin creates device plugin endpoints based on the configurations given in
   - `devices`: Target Devices' device Hex code as string
   - `drivers`: Target device driver names as string
 
-`selectors` also supports VF selection based on `pciAddresses`, `acpiIndexes` and other parameters. For more detailed configuration, please refer to [SR-IOV ConfigMap configuration](https://github.com/k8snetworkplumbingwg/sriov-network-device- plugin/tree/v3.6.2?tab=readme-ov-file#configurations)
+`selectors` also supports VF selection based on `pciAddresses`, `acpiIndexes` and other parameters. For more detailed configuration, please refer to [SR-IOV ConfigMap configuration](https://github.com/k8snetworkplumbingwg/sriov-network-device-plugin/tree/v3.6.2?tab=readme-ov-file#configurations)
 
 Please read the [SR-IOV device plugin](https://github.com/intel/sriov-network-device-plugin) to deploy:
 
@@ -439,7 +443,7 @@ switchdev
 
 The device IDs obtained during SR-IOV Device Plugin scheduling need to be passed to Kube-OVN via Multus-CNI, so Multus-CNI needs to be configured to perform the related tasks.
 
-Please read [Multus-CNI Document](https://github.com/k8snetworkplumbingwg/multus-cni) to deploy：
+Please read [Multus-CNI Document](https://github.com/k8snetworkplumbingwg/multus-cni) to deploy:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/v4.0.2/deployments/multus-daemonset-thick.yml
@@ -447,7 +451,7 @@ kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-c
 
 > Note: multus provides Thin and Thick versions of the plug-in. To support SR-IOV, you need to install the Thick version.
 
-Create `NetworkAttachmentDefinition`：
+Create `NetworkAttachmentDefinition`:
 
 ```yaml
 apiVersion: "k8s.cni.cncf.io/v1"
@@ -489,7 +493,7 @@ Download the scripts:
 wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/dist/images/install.sh
 ```
 
-Change the related options，`IFACE` should be the physic NIC and has an IP:
+Change the related options, `IFACE` should be the physic NIC and has an IP:
 
 ```bash
 ENABLE_MIRROR=${ENABLE_MIRROR:-false}
@@ -499,7 +503,7 @@ IFACE="bond1"
 # Take manual configuration of the network card in SR-IOV and Device Plugin as an example. If bond is bound, set IFACE to bond1. If bond is not bound, set IFACE to enp132s0f0np0 or enp132s0f1np1.
 ```
 
-Install Kube-OVN：
+Install Kube-OVN:
 
 ```bash
 bash install.sh
@@ -541,7 +545,7 @@ Download the scripts:
 wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/dist/images/install.sh
 ```
 
-Change the related options，`IFACE` should be the physic NIC and has an IP:
+Change the related options, `IFACE` should be the physic NIC and has an IP:
 
 ```bash
 ENABLE_MIRROR=${ENABLE_MIRROR:-false}
@@ -551,7 +555,7 @@ IFACE=""
 # If Underlay uninstallation is required, IFACE needs to be set to other non-PF network cards. (When IFACE is empty, the K8s cluster communication network card will be used by default. Note that this network card cannot be a PF network card)
 ```
 
-Install Kube-OVN：
+Install Kube-OVN:
 
 ```bash
 bash install.sh

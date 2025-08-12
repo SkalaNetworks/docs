@@ -74,10 +74,10 @@ spec:
       policy: policyDst
 ```
 
-- `remoteVpc`: The name of another peering VPC.
-- `localConnectIP`: As the IP address and CIDR of the interconnection endpoint. Note that both IPs should belong to the same CIDR and should not conflict with existing subnets.
-- `cidr`：CIDR of the peering Subnet.
-- `nextHopIP`：The `localConnectIP` on the other end of the peering VPC.
+- `remoteVpc`: the name of another peering VPC.
+- `localConnectIP`: as the IP address and CIDR of the interconnection endpoint. Note that both IPs should belong to the same CIDR and should not conflict with existing subnets.
+- `cidr`: CIDR of the peering Subnet.
+- `nextHopIP`: the `localConnectIP` on the other end of the peering VPC.
 
 Create Pods under the two Subnets
 
@@ -107,7 +107,7 @@ spec:
 
 Test the network connectivity
 
-```shell
+```bash
 # kubectl exec -it vpc-1-pod -- ping $(kubectl get pod vpc-2-pod -o jsonpath='{.status.podIP}')
 PING 172.31.0.2 (172.31.0.2): 56 data bytes
 64 bytes from 172.31.0.2: seq=0 ttl=62 time=0.655 ms

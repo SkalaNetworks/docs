@@ -40,7 +40,7 @@ Vlan and security policy in the underlying network device in advance.
 
 For management and container networks using the same NIC, Kube-OVN will transfer the NIC's Mac address, IP address, route,
 and MTU to the corresponding OVS Bridge to support single NIC deployment of Underlay networks.
-OVS Bridge name format is `br-PROVIDER_NAME`，`PROVIDER_NAME` is the name of `ProviderNetwork` (Default: provider).
+OVS Bridge name format is `br-PROVIDER_NAME`, `PROVIDER_NAME` is the name of `ProviderNetwork` (Default: provider).
 
 ## Specify Network Mode When Deploying
 
@@ -59,8 +59,8 @@ wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/d
 ENABLE_ARP_DETECT_IP_CONFLICT # disable vlan arp conflict detection if necessary
 NETWORK_TYPE                  # set to vlan
 VLAN_INTERFACE_NAME           # set to the NIC that carries the Underlay traffic, e.g. eth1
-VLAN_ID                       # The VLAN Tag need to be added，if set 0 no vlan tag will be added
-POD_CIDR                      # The Underlay network CIDR， e.g. 192.168.1.0/24
+VLAN_ID                       # The VLAN Tag need to be added, if set 0 no vlan tag will be added
+POD_CIDR                      # The Underlay network CIDR, e.g. 192.168.1.0/24
 POD_GATEWAY                   # Underlay physic gateway address, e.g. 192.168.1.1
 EXCLUDE_IPS                   # Exclude ranges to avoid conflicts between container network and IPs already in use on the physical network, e.g. 192.168.1.1..192.168.1.100
 ENABLE_LB                     # If Underlay Subnet needs to visit Service set it to true
@@ -97,15 +97,24 @@ spec:
     - interface: eth2
       nodes:
         - node1
-  excludeNodes:
-    - node2
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/arch: amd64
+      network-type: underlay
+    matchExpressions:
+      - key: kubernetes.io/hostname
+        operator: In
+        values:
+          - node1
+          - node2
 ```
 
 **Note: The length of the ProviderNetwork resource name must not exceed 12.**
 
 - `defaultInterface`: The default node NIC name. When the ProviderNetwork is successfully created, an OVS bridge named br-net1 (in the format `br-NAME`) is created in each node (except excludeNodes) and the specified node NIC is bridged to this bridge.
 - `customInterfaces`: Optionally, you can specify the NIC to be used for a specific node.
-- `excludeNodes`: Optional, to specify nodes that do not bridge the NIC. Nodes in this list will be added with the `net1.provider-network.ovn.kubernetes.io/exclude=true` tag.
+- `nodeSelector`: Optional, used to select nodes for creating OVS bridges based on node labels. Supports both `matchLabels` and `matchExpressions` selection methods.
+- `excludeNodes`: Optional, to specify nodes that do not bridge the NIC. Nodes in this list will be added with the `net1.provider-network.ovn.kubernetes.io/exclude=true` tag.  **Note: Once `nodeSelector` is used, `excludeNodes` will no longer take effect. It is recommended to use only `nodeSelector`.**
 
 Other nodes will be added with the following tags:
 
@@ -133,12 +142,12 @@ spec:
   provider: net1
 ```
 
-- `id`: VLAN ID/Tag，Kube-OVN will add this Vlan tag to traffic, if set 0, no tag is added. the vlan tag applies to a localnet port.
+- `id`: VLAN ID/Tag, Kube-OVN will add this Vlan tag to traffic, if set 0, no tag is added. the vlan tag applies to a localnet port.
 - `provider`: The name of ProviderNetwork. Multiple VLAN can use a same ProviderNetwork.
 
 ### Create Subnet
 
-Bind Vlan to a Subnet as below：
+Bind Vlan to a Subnet as below:
 
 ```yaml
 apiVersion: kubeovn.io/v1
@@ -150,9 +159,11 @@ spec:
    cidrBlock: 172.17.0.0/16
    gateway: 172.17.0.1
    vlan: vlan1
+   disableGatewayCheck: false
 ```
 
-Simply specify the value of `vlan` as the name of the VLAN to be used. Multiple subnets can refer to the same VLAN.
+- `vlan`: The VLAN name to be used. Multiple subnets can reference the same VLAN.
+- `disableGatewayCheck`: If the gateway in the underlying network does not exist, set this field to `true` to disable gateway detection.
 
 ## Create Pod
 
@@ -237,7 +248,7 @@ nmcli device set eth0 managed yes
 nmcli -t -f GENERAL.STATE device show eth0 | grep -qw unmanaged || nmcli device reapply eth0
 ```
 
-**Notice**：If the host nic's MAC is changed, Kube-OVN will not change the OVS bridge's MAC unless kube-ovn-cni is restarted.
+**Notice**: If the host nic's MAC is changed, Kube-OVN will not change the OVS bridge's MAC unless kube-ovn-cni is restarted.
 
 ## Known Issues
 

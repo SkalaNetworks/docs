@@ -8,13 +8,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.13'
           cache: 'pip'
 
       - name: committer cache
@@ -28,9 +28,11 @@ jobs:
       - name: build
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GIT_COMMITER_TOKEM }}
+          ENABLE_GIT_COMMITTERS: true
+          ENABLE_PDF_EXPORT: 1
         run: |
           git config --global user.name "ci-bot"
           git config --global user.email "ci-bot@example.com"
           git fetch origin gh-pages
-          mike deploy --push -u v1.14.x dev -t "v1.14.x (dev)"
+          mike deploy --push -u v1.15.x dev -t "v1.15.x (dev)"
           mike list

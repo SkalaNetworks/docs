@@ -8,6 +8,10 @@ which dramatically reduce latency and significantly increase the throughput.
 
 ![](../static/hw-offload.png)
 
+!!! note
+
+    The solution described in this article was verified in 2022. However, hardware NICs may now have new features, and some limitations mentioned may have been resolved. Please consult your hardware vendor for the latest technical constraints and capabilities.
+
 ## Prerequisites
 
 - Corigine Agilio CX series SmartNIC.
@@ -132,13 +136,13 @@ corigine.com/agilio_sriov  0           0
 
 The device IDs obtained during SR-IOV Device Plugin scheduling need to be passed to Kube-OVN via Multus-CNI, so Multus-CNI needs to be configured to perform the related tasks.
 
-Please read [Multus-CNI Document](https://github.com/k8snetworkplumbingwg/multus-cni) to deploy：
+Please read [Multus-CNI Document](https://github.com/k8snetworkplumbingwg/multus-cni) to deploy:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml
 ```
 
-Create `NetworkAttachmentDefinition`：
+Create `NetworkAttachmentDefinition`:
 
 ```yaml
 apiVersion: "k8s.cni.cncf.io/v1"
@@ -178,7 +182,7 @@ Download the scripts:
 wget https://raw.githubusercontent.com/kubeovn/kube-ovn/{{ variables.branch }}/dist/images/install.sh
 ```
 
-Change the related options，`IFACE` should be the physic NIC and has an IP:
+Change the related options, `IFACE` should be the physic NIC and has an IP:
 
 ```bash
 ENABLE_MIRROR=${ENABLE_MIRROR:-false}
@@ -187,7 +191,7 @@ ENABLE_LB=${ENABLE_LB:-false}
 IFACE="ensp01"
 ```
 
-Install Kube-OVN：
+Install Kube-OVN:
 
 ```bash
 bash install.sh

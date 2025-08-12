@@ -84,7 +84,7 @@ In each CRD definition, the Condition field in Status follows the above format, 
 | v6availableIPrange | String | The available range of IPv6 addresses on the subnet |
 | v6UsingIPs | Float64 | Number of used IPv6 IPs |
 | v6usingIPrange | String | Used IPv6 address ranges on the subnet |
-| sctivateGateway | String | The currently working gateway node in centralized subnet of master-backup mode |
+| activateGateway | String | The currently working gateway node in centralized subnet of master-backup mode |
 | dhcpV4OptionsUUID | String | The DHCP_Options record identifier associated with the lsp dhcpv4_options on the subnet |
 | dhcpV6OptionsUUID | String | The DHCP_Options record identifier associated with the lsp dhcpv6_options on the subnet |
 | u2oInterconnectionIP | String | The IP address used for interconnection when Overlay/Underlay interconnection mode is enabled |
@@ -160,6 +160,7 @@ In each CRD definition, the Condition field in Status follows the above format, 
 | --- | --- | --- |
 | defaultInterface | String | The name of the NIC interface used by default for this bridge network |
 | customInterfaces | []CustomInterface | The special NIC configuration used by this bridge network |
+| nodeSelector | LabelSelector | Select nodes for creating OVS bridges based on node labels, supports matchLabels and matchExpressions (once nodeSelector is used, excludeNodes will no longer take effect) |
 | excludeNodes | []String | The names of the nodes that will not be bound to this bridge network |
 | exchangeLinkName | Bool | Whether to exchange the bridge NIC and the corresponding OVS bridge name |
 

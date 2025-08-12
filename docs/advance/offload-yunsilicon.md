@@ -3,7 +3,10 @@
 Kube-OVN 在最终的数据平面使用 OVS 来完成流量转发，相关的流表匹配，隧道封装等功能为 CPU 密集型，在大流量下会消耗大量 CPU 资源并导致
 延迟上升和吞吐量下降。云脉芯联的 metaScale 系列智能网卡可以将 OVS 相关的操作卸载到硬件网卡上执行。该技术可以在无需对 OVS 控制平面进行修改的情况下，缩短数据路径，避免对主机 CPU 资源的使用，大幅降低延迟并显著提升吞吐量。
 
-> 目前云脉芯联只适配了 1.11 系列版本的 Kube-OVN，部分最新功能无法使用。
+!!! note
+
+    1. 本文所述方案在 2024 年经过验证，但目前硬件网卡可能已经有了新的特性，当时的一些限制也可能已经被解决。请咨询您的硬件供应商，了解最新的技术限制和能力。
+    2. 目前云脉芯联只适配了 1.11 系列版本的 Kube-OVN，部分最新功能无法使用。
 
 ## 前置条件
 
@@ -54,7 +57,7 @@ bash install.sh
 
 1. 找到 metaScale 设备的设备 ID，下面是 `b3:00.0`:
 
-```shell
+```bash
 [root@k8s-master ~]# lspci -d 1f67:
 b3:00.0 Ethernet controller: Device 1f67:1111 (rev 02)
 b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)
@@ -62,27 +65,27 @@ b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)
 
 2. 找到与设备 ID 相关的接口，下面是 `p3p1`：
 
-```shell
+```bash
 ls -l /sys/class/net/ | grep b3:00.0
 lrwxrwxrwx 1 root root 0 May  7 16:30 p3p1 -> ../../devices/pci0000:b2/0000:b2:00.0/0000:b3:00.0/net/p3p1
 ```
 
 3. 检查可用的 VF 数量：
 
-```shell
+```bash
 cat /sys/class/net/p3p1/device/sriov_totalvfs
 512
 ```
 
 4. 创建 VF：
 
-```shell
+```bash
 echo '10' > /sys/class/net/p3p1/device/sriov_numvfs
 ```
 
 5. 确认 VF 创建成功：
 
-```shell
+```bash
 lspci -d 1f67:
 b3:00.0 Ethernet controller: Device 1f67:1111 (rev 02)
 b3:00.1 Ethernet controller: Device 1f67:1111 (rev 02)

@@ -62,6 +62,8 @@ In the Kubernetes network specification, it is required that Nodes can communica
 To achieve this in Overlay network mode, Kube-OVN creates a `join` Subnet and creates a virtual NIC `ovn0`
 at each node that connect to the `join` subnet, through which the nodes and Pods can communicate with each other.
 
+All network communication between Pods and Nodes will go through the `ovn0` network interface. When a Node accesses a Pod, it enters the virtual network via the `ovn0` interface, and the virtual network then connects to the host network through the `ovn0` interface.
+
 The configuration of this Subnet is specified at installation time, you can refer to [Built-in Network Settings](setup-options.en.md#built-in-network-settings) for more details.
 To change the CIDR of the Join Subnet after installation please refer to [Change Join CIDR](../ops/change-join-subnet.en.md).
 
@@ -138,7 +140,7 @@ EOF
 
 - `cidrBlock`: Subnet CIDR range, different Subnet CIDRs under the same VPC cannot overlap.
 - `excludeIps`: The address list is reserved so that the container network will not automatically assign addresses in the list, which can be used as a fixed IP address assignment segment or to avoid conflicts with existing devices in the physical network in Underlay mode.
-- `gateway`：For this subnet gateway address, Kube-OVN will automatically assign the corresponding logical gateway in Overlay mode, and the address should be the underlying physical gateway address in Underlay mode.
+- `gateway`: For this subnet gateway address, Kube-OVN will automatically assign the corresponding logical gateway in Overlay mode, and the address should be the underlying physical gateway address in Underlay mode.
 - `namespaces`: Bind the list of Namespace for this Subnet. Pods under the Namespace will be assigned addresses from the current Subnet after binding.
 - `routeTable`: Associate the route table, default is main table, route table definition please defer to [Static Routes](../vpc/vpc.en.md#static-routes)
 

@@ -2,11 +2,15 @@
 
 Kube-OVN uses OVS for traffic forwarding in the final data plane, and the associated flow table matching, tunnel encapsulation and other functions are CPU-intensive, which consumes a lot of CPU resources and leads to higher latency and lower throughput under heavy traffic.YUSUR CONFLUX-22OOE series SmartNIC can offload OVS-related operations to the hardware. This technology can shorten the data path without modifying the OVS control plane, avoiding the use of host CPU resources, which dramatically reduce latency and significantly increase the throughput.
 
+!!! note
+
+    The solution described in this article was verified in 2024. However, hardware NICs may now have new features, and some limitations mentioned may have been resolved. Please consult your hardware vendor for the latest technical constraints and capabilities.
+
 ## Prerequisites
 
-- YUSUR CONFLUX-22OOE series SmartNIC。
-- ensure hados(Heterogeneous Agile Developing & Operating System) installed。
-- Enable SR-IOV in BIOS。
+- YUSUR CONFLUX-22OOE series SmartNIC.
+- ensure hados(Heterogeneous Agile Developing & Operating System) installed.
+- Enable SR-IOV in BIOS.
 
 ## Installation Guide
 
@@ -96,7 +100,7 @@ The device IDs obtained during SR-IOV Device Plugin scheduling need to be passed
 kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/v4.0.2/deployments/multus-daemonset-thick.yml
 ```
 
-Create `NetworkAttachmentDefinition`：
+Create `NetworkAttachmentDefinition`:
 
 ```yaml
 apiVersion:
@@ -138,7 +142,7 @@ spec:
 wget https://github.com/kubeovn/kube-ovn/blob/release-1.12/dist/images/install.sh
 ```
 
-Change the related options，IFACE should be the physic NIC and has an IP:
+Change the related options, `IFACE` should be the physic NIC and has an IP:
 
 ```bash
 ENABLE_MIRROR=${ENABLE_MIRROR:-false}
